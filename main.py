@@ -123,9 +123,8 @@ async def main(mode):
 
 
 async def start():
-    if len(sys.argv) > 0:
-        # mode = sys.argv[1]
-        mode = "farming"
+    if len(sys.argv) > 1:
+        mode = sys.argv[1]
         await main(mode)
     else:
         print("Please add the mode: (python main <mode>)")
