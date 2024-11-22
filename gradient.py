@@ -523,6 +523,7 @@ class Gradient:
                 retry+=1
                 if retry > 5:
                     logger.error(f"{self.number_of_list} | {self.mail} | {idx} | UNSUCCESSFULLY CONNECT TO WEBSITE! Error: {error}")
+                    await context.close()
                     return
                 await context.close()
                 await self.get_stats_alone(retry=retry)
@@ -550,6 +551,20 @@ class Gradient:
 
             try:
                 status, points = await self.dashboard_node_alone(page)
+                if points == "Page is closed" or points == "Unknown":
+                    logger.warning(
+                        f"{self.number_of_list} | {self.mail} | {idx} | Something wrong! Try again after 20 seconds..")
+                    await context.close()
+                    retry+=1
+                    if retry > 5:
+                        logger.error(
+                            f"{self.number_of_list} | {self.mail} | {idx} | UNSUCCESSFULLY CONNECT TO WEBSITE! Error: {error}")
+                        await context.close()
+                        await self.get_stats_alone(retry=retry)
+                        return
+
+
+
                 logger.info(
                     f"{self.number_of_list} | {self.mail} | {idx} | Status node: {status}; Points: {points}")
             except Exception as error:
@@ -588,7 +603,7 @@ class Gradient:
                         logger.warning(f"{self.number_of_list} | {self.mail} | While extension doesnt add to the list..")
                     except:
                         pass
-                    points = "While adding"
+                    points = await asyncio.wait_for(points.inner_text(), timeout=10)
                     status = "While adding"
                     return status, points
             try:
