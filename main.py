@@ -117,7 +117,7 @@ async def main(mode):
 
 
 async def start():
-    if len(sys.argv) > 0:
+    if len(sys.argv) > 1:
         mode = sys.argv[1]
         await main(mode)
     else:
