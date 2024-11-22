@@ -211,6 +211,7 @@ class Gradient:
                 await expect(button_sign_up).to_be_visible()
                 await button_sign_up.click()
                 logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Waiting for getting code...")
+
                 await asyncio.sleep(7)
                 screen_width = await page.evaluate("window.innerWidth")
                 await page.mouse.click(screen_width * 0.9, 300)
@@ -292,7 +293,7 @@ class Gradient:
                     f"{self.number_of_list} | {self.mail} | {idx} | Unsuccessfully registration! Error: {error}")
                 logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Starting {retry}/5 time")
                 await context.close()
-                await self.registration(ref_code)
+                await self.registration(ref_code, retry=retry)
 
 
     async def perform_farming_actions(self, ref_code: str, count_change_proxy = 0, retry = 0):
@@ -440,7 +441,7 @@ class Gradient:
                         logger.info(
                             f"{self.number_of_list} | {self.mail} | {idx} | Waiting 2 minutes for the updating extension...")
                         k+=1
-                        if k > 0:
+                        if k > 15:
                             logger.warning(
                                 f"{self.number_of_list} | {self.mail} | {idx} | Time out for the updating extension")
                             break
@@ -482,53 +483,6 @@ class Gradient:
                 await self.infinity_work(context)
             except:
                 pass
-
-            # while True:
-            #     idx = 'Farming'
-            #     check = False
-            #     try:
-            #         logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Start farming..")
-            #         try:
-            #             # await asyncio.wait_for(page.reload(), timeout=10)
-            #             await asyncio.wait_for(
-            #                 page.goto('https://app.gradient.network/dashboard/node'),
-            #                 timeout=10
-            #             )
-            #
-            #         except asyncio.TimeoutError:
-            #             await asyncio.sleep(3)
-            #
-            #         try:
-            #             # await asyncio.wait_for(page.reload(), timeout=10)
-            #             await asyncio.wait_for(
-            #                 page2.goto('chrome-extension://caacbgbklghmpodbdafajbgdnegacfmo/popup.html'),
-            #                 timeout=10
-            #             )
-            #
-            #         except asyncio.TimeoutError:
-            #             await asyncio.sleep(5)
-            #         # status, points = await self.get_status(page2)
-            #         # status, points = await self.dashboard_node(page)
-            #         # logger.info(
-            #         #     f"{self.number_of_list} | {self.mail} | {idx} | Status node: {status}; Points: {points}")
-            #         delay = random.randint(600, 700)
-            #         logger.info(
-            #             f"{self.number_of_list} | {self.mail} | {idx} | Waiting {delay}s for the updating ...")
-            #         check = True
-            #         await asyncio.sleep(delay)
-            #
-            #     except asyncio.CancelledError:
-            #         if check:
-            #             await asyncio.sleep(delay)
-            #         else:
-            #             logger.info(
-            #                 f"{self.number_of_list} | {self.mail} | {idx} | Waiting 20s for the updating...")
-            #             await asyncio.sleep(20)
-            #
-            #     except Exception as error:
-            #         logger.error(f"{self.number_of_list} | {self.mail} | {idx} | Error: {error}")
-            #         await asyncio.sleep(20)
-            #         await self.perform_farming_actions(ref_code)
 
 
     async def get_stats_alone(self, retry = 0):
@@ -675,10 +629,23 @@ class Gradient:
 
     async def infinity_work(self, context):
         idx = 'Farming'
-        pages = context.pages
-        page = pages[2]
-        page2 = pages[3]
         while True:
+            try:
+                pages = context.pages
+                page = pages[2]
+                page2 = pages[3]
+            except:
+                pages = None
+
+            if not pages:
+                logger.warning(f"{self.number_of_list} | {self.mail} | {idx} | Context closed. Restart required.")
+                logger.info(
+                    f"{self.number_of_list} | {self.mail} | {idx} | Time sleep 20 seconds")
+                await context.close()
+                await asyncio.sleep(20)
+                await self.perform_farming_actions(self.ref_code)
+                return
+
             try:
                 await page.reload()
                 await page2.reload()
