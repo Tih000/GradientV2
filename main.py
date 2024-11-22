@@ -64,7 +64,7 @@ async def perform_registration():
             logger.info(
                 f'{index} | {gradients[number].mail} |⏳ Delay between accounts {delay}s')
             await asyncio.sleep(delay)
-    await asyncio.gather()
+    await asyncio.gather(*tasks)
 
 
 async def perform_start_farming():
@@ -82,19 +82,14 @@ async def perform_start_farming():
 
 async def perform_start_get_stats():
     tasks = []
-    while True:
-        for number in numbers:
-            index = gradients[number].number_of_list
-            tasks.append(asyncio.create_task(gradients[number].get_stats()))
-            delay = random.randint(delay_for_getting_stats_min, delay_for_getting_stats_max)
-            logger.info(
-                f'{index} | {gradients[number].mail} |⏳ Waiting for the next checking {delay}s...')
-            await asyncio.sleep(delay)
-        await asyncio.gather(*tasks)
-        delay = random.randint(400, 500)
+    for number in numbers:
+        index = gradients[number].number_of_list
+        tasks.append(asyncio.create_task(gradients[number].get_stats_alone()))
+        delay = random.randint(delay_for_getting_stats_min, delay_for_getting_stats_max)
         logger.info(
-            f'STATS |⏳ Waiting for the next checking {delay}s...')
+                f'{index} | {gradients[number].mail} |⏳ Waiting for the next checking {delay}s...')
         await asyncio.sleep(delay)
+    await asyncio.gather(*tasks)
 
 
 async def check_proxy():
@@ -116,14 +111,13 @@ async def main(mode):
 
     elif mode == 'registration':
         await perform_registration()
-        await perform_start_farming()
 
     else:
         print(f'No found this mode <{mode}>. Try another mode')
 
 
 async def start():
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 0:
         mode = sys.argv[1]
         await main(mode)
     else:
