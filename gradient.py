@@ -569,7 +569,7 @@ class Gradient:
                     f"{self.number_of_list} | {self.mail} | {idx} | Status node: {status}; Points: {points}")
             except Exception as error:
                 logger.error(
-                    f"{self.number_of_list} | {self.mail} | {idx} | Something wrong! Try again after 20 seconds.. Error: error {error}")
+                    f"{self.number_of_list} | {self.mail} | {idx} | Something wrong! Try again after 20 seconds..")
                 await context.close()
                 await asyncio.sleep(20)
                 await self.get_stats_alone()
