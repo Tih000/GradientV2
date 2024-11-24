@@ -4,14 +4,16 @@ import time
 
 from loguru import logger
 from gradient import Gradient
-from config import shuffle, delay_min, delay_max, delay_for_getting_stats_min, delay_for_getting_stats_max
+from config import shuffle, delay_min, delay_max, delay_for_getting_stats_min, delay_for_getting_stats_max, TELEGRAM
+from telegram import send_message_with_photo
 logger.remove()
 logger.add(sys.stderr, format='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
                               '<level>{level: <7}</level> | '
                               '<level>{message}</level>')
 
 logger.add("./logs/app.txt", format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | {level} | {message}")
-logger.add("./logs/status_node.txt", level="INFO", format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | {message}", filter=lambda record: "Status node" in record["message"])
+logger.add("./logs/status_node.txt", level="INFO", format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | {message}", filter=lambda record: "| Farming | Status node:" in record["message"])
+logger.add("./logs/STATS.txt", level="INFO", format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | {message}", filter=lambda record: "| STATS | Status node:" in record["message"])
 
 with open('proxy.txt') as f:
     proxy = []
@@ -104,6 +106,8 @@ async def main(mode):
         await check_proxy()
 
     elif mode == 'farming':
+        if TELEGRAM:
+            send_message_with_photo()
         await perform_start_farming()
 
     elif mode == 'stats':
