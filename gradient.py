@@ -323,8 +323,11 @@ class Gradient:
                 button = page.locator('//html/body/div[1]/div[2]/div/div/div/div[4]/button[1]')
                 await expect(button).to_be_visible()
                 await button.click()
+                await asyncio.sleep(3)
                 try:
-                    if await page.locator('//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/button', timeout=3000).text_content() == "Get Boosted":
+                    text = await page.locator(
+                        '//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/div[1]/div[2]').text_content()
+                    if text == "3,000 EXP and a 2% reward boost.":
                         logger.error(
                             f"{self.number_of_list} | {self.mail} | {idx} | This account cannot be registered with software")
                         return
@@ -333,7 +336,9 @@ class Gradient:
                     pass
 
                 try:
-                    if await page.locator('//html/body/div[1]/div[2]/div/div/div/div[2]/div[2]/div/div/span', timeout=3000).text_content() == "Wrong email or password":
+                    text = await page.locator(
+                        '//html/body/div[1]/div[2]/div/div/div/div[2]/div[2]/div/div/span').text_content()
+                    if text == "Wrong email or password":
                         logger.error(
                             f"{self.number_of_list} | {self.mail} | {idx} | The account is not registered or wrong password")
                         return
