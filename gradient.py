@@ -2,10 +2,12 @@ from playwright.async_api import async_playwright, expect
 import asyncio, random, aiohttp
 from fake_useragent import UserAgent
 from loguru import logger
-from config import HEADLESS, DELAY_BETWEEN_GETTING_STATS, DINAMIC_PROXY
+from config import HEADLESS, DELAY_BETWEEN_GETTING_STATS, DINAMIC_PROXY, TELEGRAM_STATS_DELAY
 import os, imaplib
 from bs4 import BeautifulSoup
-import email, json
+import email
+from config import TELEGRAM
+from telegram import send_message_error, send_message, send_message_success, send_message_warning
 from email.policy import default
 
 EXTENTION_PATH = os.path.join(os.getcwd(), '1.0.16_0')
@@ -62,16 +64,13 @@ class Gradient:
         idx = "Connect the email"
         sender_email = "noreply@gradient.network"
         try:
-            logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Logging in email")
             mail = imaplib.IMAP4_SSL(imap_server, imap_port)
             mail.login(self.mail, self.email_password)
-            logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Login successful")
             mail.select("INBOX")
 
             status, messages = mail.search(None, f'FROM "{sender_email}"')
             if status != 'OK' or not messages[0]:
-                logger.error(f"{self.number_of_list} | {self.mail} | {idx} | No emails found from {sender_email}.")
-                return
+                return None
 
             mail_ids = messages[0].split()
             latest_email_id = mail_ids[-1]
@@ -116,7 +115,7 @@ class Gradient:
                 await self.connect_to_email(imap_server, imap_port, retry=retry)
 
 
-    async def registration(self, ref_code: str, retry=0):
+    async def registration(self, ref_code: str, retry=0, retry_reg = 0):
         self.ref_code = ref_code
         idx = "Starting browser"
         async with async_playwright() as p:
@@ -183,7 +182,7 @@ class Gradient:
                 await button_confirm.click()
                 try:
                     if await page.locator('//html/body/div[1]/div[2]/div/div/div/div[2]/div[2]/div/span[1]').text_content() == "Email already registered,":
-                        logger.warning(f"{self.number_of_list} | {self.mail} | {idx} | Account already registered!")
+                        logger.error(f"{self.number_of_list} | {self.mail} | {idx} | This account cannot be registered with software")
                         return
                 except:
                     pass
@@ -210,7 +209,6 @@ class Gradient:
                 button_sign_up = page.locator("//html/body/div[1]/div[2]/div/div/div/div[4]/button")
                 await expect(button_sign_up).to_be_visible()
                 await button_sign_up.click()
-                logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Waiting for getting code...")
 
                 await asyncio.sleep(7)
                 screen_width = await page.evaluate("window.innerWidth")
@@ -234,56 +232,15 @@ class Gradient:
                     await page.keyboard.press('Escape')
                     await asyncio.sleep(3)
                     logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Successfully registration")
-                    return context
 
                 else:
-                    await asyncio.sleep(5)
-
-                    await page.goto("https://app.gradient.network/")
-                    await asyncio.sleep(1)
-
-                    inputs = page.get_by_placeholder("Enter Email")
-                    await expect(inputs).to_be_visible()
-                    await inputs.type(self.mail)
-
-                    inputs2 = page.get_by_placeholder("Enter Password")
-                    await expect(inputs2).to_be_visible()
-                    await inputs2.type(self.email_password)
-                    await asyncio.sleep(random.randint(1, 3))
-
-                    button = page.locator('//html/body/div[1]/div[2]/div/div/div/div[4]/button[1]')
-                    await expect(button).to_be_visible()
-                    await button.click()
-
-                    inputs_ref_code = page.locator('//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/div[2]/div[1]/input[1]')
-                    await expect(inputs_ref_code).to_be_visible()
-                    await inputs_ref_code.type(ref_code)
-
-                    button_get_boosted = page.locator('//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/button')
-                    await expect(button_get_boosted).to_be_visible()
-                    await button_get_boosted.click()
-                    logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Waiting for getting code...")
-                    await asyncio.sleep(15)
-                    screen_width = await page.evaluate("window.innerWidth")
-                    await page.mouse.click(screen_width * 0.9, 300)
-                    email_code = await self.connect_to_email()
-                    inputs_email_code = page.locator('//html/body/div[1]/div[2]/div/div/div/div[4]/div/input[1]')
-                    await expect(inputs_email_code).to_be_visible()
-                    await inputs_email_code.type(email_code)
-
-                    button_verify = page.locator('//html/body/div[1]/div[2]/div/div/div/button[1]')
-                    await expect(button_verify).to_be_visible()
-                    await button_verify.click()
-
-                    await asyncio.sleep(random.randint(3, 6))
-                    button = page.locator('//html/body/div[1]/div[2]/div/div/div/div[2]/button')
-                    await expect(button).to_be_visible()
-                    await button.click()
-                    await asyncio.sleep(3)
-                    await page.keyboard.press('Escape')
-                    await asyncio.sleep(3)
-                    logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Successfully registration")
-                    return context
+                    retry_reg += 1
+                    if DINAMIC_PROXY and retry_reg < 6:
+                        logger.warning(f"{self.number_of_list} | {self.mail} | {idx} | Wrong proxy. Try registration with another proxy")
+                        await self.registration(ref_code, retry=0, retry_reg=retry_reg)
+                        return
+                    logger.error(
+                        f"{self.number_of_list} | {self.mail} | {idx} | This account cannot be registered with software")
 
             except Exception as error:
                 if retry > 5:
@@ -341,6 +298,7 @@ class Gradient:
                 logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Successfully connect to website")
 
             except Exception as error:
+                retry += 1
                 if retry > 5:
                     logger.error(f"{self.number_of_list} | {self.mail} | {idx} | UNSUCCESSFULLY CONNECT TO WEBSITE!")
                     return
@@ -367,42 +325,32 @@ class Gradient:
                 await button.click()
                 try:
                     if await page.locator('//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/button', timeout=3000).text_content() == "Get Boosted":
-                        inputs_ref_code = page.locator(
-                            '//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/div[2]/div[1]/input[1]')
-                        await expect(inputs_ref_code).to_be_visible()
-                        await inputs_ref_code.type(ref_code)
-
-                        button_get_boosted = page.locator('//html/body/div[3]/div/div[2]/div/div[2]/div/div/div/button')
-                        await expect(button_get_boosted).to_be_visible()
-                        await button_get_boosted.click()
-                        logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Waiting for getting code...")
-                        await asyncio.sleep(15)
-                        screen_width = await page.evaluate("window.innerWidth")
-                        await page.mouse.click(screen_width * 0.9, 300)
-                        email_code = await self.connect_to_email()
-                        inputs_email_code = page.locator('//html/body/div[1]/div[2]/div/div/div/div[4]/div/input[1]')
-                        await expect(inputs_email_code).to_be_visible()
-                        await inputs_email_code.type(email_code)
-
-                        button_verify = page.locator('//html/body/div[1]/div[2]/div/div/div/button[1]')
-                        await expect(button_verify).to_be_visible()
-                        await button_verify.click()
-
-                        await asyncio.sleep(random.randint(3, 6))
-                        button = page.locator('//html/body/div[1]/div[2]/div/div/div/div[2]/button')
-                        await expect(button).to_be_visible()
-                        await button.click()
-                        await asyncio.sleep(3)
-                        await page.keyboard.press('Escape')
-                        await asyncio.sleep(3)
-                        logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Successfully logining")
+                        logger.error(
+                            f"{self.number_of_list} | {self.mail} | {idx} | This account cannot be registered with software")
+                        return
 
                 except:
                     pass
-                await asyncio.sleep(3)
+
+                try:
+                    if await page.locator('//html/body/div[1]/div[2]/div/div/div/div[2]/div[2]/div/div/span', timeout=3000).text_content() == "Wrong email or password":
+                        logger.error(
+                            f"{self.number_of_list} | {self.mail} | {idx} | The account is not registered or wrong password")
+                        return
+
+                except:
+                    pass
+
+                await asyncio.sleep(6)
                 await page.keyboard.press('Escape')
-                await asyncio.sleep(3)
-                logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Successfully logining")
+
+                try:
+                    if await page.locator('/html/body/div[1]/div[1]/div[2]/header/div/div[2]/div[2]/div[2]',
+                                          timeout=3000):
+                        logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Successfully logining")
+                except:
+                    pass
+
 
             except Exception as error:
                 if retry > 5:
@@ -454,7 +402,7 @@ class Gradient:
 
                 await asyncio.sleep(2)
                 status = await self.get_status_extension(page2)
-                if status == "Good":
+                if status == "Good" or status == "Disconnected":
                     logger.info(f"{self.number_of_list} | {self.mail} | {idx} | Status: {status} --> Starting infinity work")
                 else:
                     if not DINAMIC_PROXY:
@@ -563,8 +511,6 @@ class Gradient:
                         await self.get_stats_alone(retry=retry)
                         return
 
-
-
                 logger.info(
                     f"{self.number_of_list} | {self.mail} | {idx} | Status node: {status}; Points: {points}")
             except Exception as error:
@@ -642,8 +588,9 @@ class Gradient:
             return None
 
 
-    async def infinity_work(self, context):
+    async def infinity_work(self, context, retry = 0):
         idx = 'Farming'
+        current_time = 0
         while True:
             try:
                 pages = context.pages
@@ -658,6 +605,8 @@ class Gradient:
                     f"{self.number_of_list} | {self.mail} | {idx} | Time sleep 20 seconds")
                 await context.close()
                 await asyncio.sleep(20)
+                if TELEGRAM:
+                    send_message(f"⚠️ {self.number_of_list} | {self.mail} | Context closed. Restart required.")
                 await self.perform_farming_actions(self.ref_code)
                 return
 
@@ -669,7 +618,23 @@ class Gradient:
                 status = await self.get_status_extension(page2)
                 await page.bring_to_front()
                 points = await self.get_points(page)
+
+                if TELEGRAM and (current_time > TELEGRAM_STATS_DELAY):
+                    current_time = 0
+                    if status == "Unsupported":
+                        send_message_error(self.number_of_list, self.mail, status, points)
+                    elif status == "Disconnected":
+                        send_message_warning(self.number_of_list, self.mail, status, points)
+                    else:
+                        send_message_success(self.number_of_list, self.mail, status, points)
+
                 if status == "Unsupported":
+                    retry+=1
+                    if retry > 0 and not DINAMIC_PROXY:
+                        logger.error(f"{self.number_of_list} | {self.mail} | {idx} | Status: {status}. Static proxy. Close the account")
+                        send_message(f"❌❌❌ {self.number_of_list} | {self.mail} | Status: {status}. Static proxy. Close the account")
+                        return
+
                     logger.warning(
                         f"{self.number_of_list} | {self.mail} | {idx} | Status: {status}. Update proxy")
                     await context.close()
@@ -683,8 +648,11 @@ class Gradient:
                     logger.info(
                         f"{self.number_of_list} | {self.mail} | {idx} | Waiting {delay}s for the updating stats...")
                     await asyncio.sleep(delay)
+                    current_time += delay
 
             except:
                 logger.info(
                     f"{self.number_of_list} | {self.mail} | {idx} | Something is wrong. Try the next time")
                 await asyncio.sleep(20)
+                current_time += 20
+
